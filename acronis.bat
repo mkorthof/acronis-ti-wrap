@@ -2,9 +2,11 @@
 SETLOCAL EnableDelayedExpansion
 
 REM :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-REM :: Acronis True Image 2016 (Home) Wrapper 
+REM :: Acronis True Image Wrapper
 REM :: Deletes oldest '.tib' first if needed, then runs most recent '.tis'
-REM :: Run without arguments as Admin to start or use '-l' to view latest log
+REM :: Run without arguments as Admin to start
+REM ::   use '-l' to view latest log
+REM ::   or '-n' to skip running "after" usercmd
 REM :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 REM :: Set minimal needed free space in MB, so at least '.tib' file size
@@ -34,10 +36,13 @@ FOR %%L IN (G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z) DO (
 
 ( echo %~1 | find /I "-h" >nul 2>&1 ) && (
   echo:
-  echo %~nx0 [-l^|-n]   (l=list logs, n=no 'after' usercmd^)
+  echo Acronis True Image Wrapper
+  echo:
+  echo USAGE: %~nx0 [-l^|-n]   l: list logs
+  echo                              n: no 'after' usercmd
   echo:
   echo Run without arguments as Admin to start backup.
-  echo See inside script for options and details.
+  echo See inside script for config and details.
   GOTO :EOF
 )
 
@@ -53,6 +58,11 @@ FOR %%L IN (G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z) DO (
   ) ELSE (
     echo %CDATE% ERROR: Log not found
   )
+  GOTO :EOF
+)
+
+whoami /groups | find "S-1-16-12288" >nul 2>&1 || (
+  echo Please run this command as Administrator (req to exec TI script^)
   GOTO :EOF
 )
 
@@ -102,41 +112,36 @@ IF NOT EXIST %BKP_PATH% (
   )
 )
 
-whoami /groups | find "S-1-16-12288" >nul 2>&1 && (
-  FOR /F "delims=" %%i IN ('DIR /B /OD %TI_DATA%\Scripts') DO (
-    SET "script=%%i"
-  )
-  echo %CDATE% Using script: "!script!"
-  IF %NO_AFTER% EQU 1 (
-    echo %CDATE% Removing 'after' user command from "!script!"
-    REM :: SETLOCAL EnableExtensions DisableDelayedExpansion
-    del "%TEMP%\recent.tis" 2>nul
-    SET "print=1"
-    (
-      FOR /F "usebackq delims=" %%a in (`type %TI_DATA%\Scripts\!script!`) DO (
-        FOR /F "tokens=1,2 delims=/<> " %%b in ("%%a") DO (
-          IF /I "%%~c"=="after" (
-            IF DEFINED print (
-              SET "print="
-            ) ELSE (
-              SET "print=1"
-            )
+FOR /F "delims=" %%i IN ('DIR /B /OD %TI_DATA%\Scripts') DO (
+  SET "script=%%i"
+)
+echo %CDATE% Using script: "!script!"
+IF %NO_AFTER% EQU 1 (
+  echo %CDATE% Removing 'after' user command from "!script!"
+  REM :: SETLOCAL EnableExtensions DisableDelayedExpansion
+  del "%TEMP%\recent.tis" 2>nul
+  SET "print=1"
+  (
+    FOR /F "usebackq delims=" %%a in (`type %TI_DATA%\Scripts\!script!`) DO (
+      FOR /F "tokens=1,2 delims=/<> " %%b in ("%%a") DO (
+        IF /I "%%~c"=="after" (
+          IF DEFINED print (
+            SET "print="
           ) ELSE (
-            IF DEFINED print (
-              SET "script=%TEMP%\recent.tis"
-              echo(%%a) >> "!script!"
-            )
+            SET "print=1"
+          )
+        ) ELSE (
+          IF DEFINED print (
+            SET "script=%TEMP%\recent.tis"
+            echo(%%a) >> "!script!"
           )
         )
       )
     )
   )
-  "%TI_PROG%" /script:"!script:.tib.tis=!" || (
-    echo %CDATE% ERROR: Issue while running TrueImage script, exiting...
-   GOTO :EOF
-  )
-  echo %CDATE% Done
-  GOTO :EOF
-) || (
-  echo Please run this command as Administrator to execute TrueImage script
 )
+"%TI_PROG%" /script:"!script:.tib.tis=!" || (
+  echo %CDATE% ERROR: Issue while running TrueImage script, exiting...
+  GOTO :EOF
+)
+echo %CDATE% Done
