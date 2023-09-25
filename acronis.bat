@@ -23,29 +23,8 @@ REM :: END OF CONFIG :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 SET "TI_PROG=%CommonProgramFiles(x86)%\Acronis\TrueImageHome\TrueImageHomeNotify.exe"
 SET "TI_DATA=%ALLUSERSPROFILE%\Acronis\TrueImageHome"
-
-REM :: TODO: del oldest '.tib' using Acronis settings instead of DIR date/time
-
-SET "CDATE=%DATE:~-4%-%DATE:~-7,2%-%DATE:~-10,2% %TIME:~0,2%:%TIME:~3,2%:%TIME:~6,2%"
-
 SET "BKP_PATH=%BKP_DRIVE%:\%BKP_DIR%"
-FOR %%L IN (G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z) DO (
-  IF EXIST "%%L:\%BKP_DIR%" (
-    SET "BKP_PATH=%%L:\%BKP_DIR%"
-  )
-)
-
-( echo %~1 | find /I "-h" >nul 2>&1 ) && (
-  echo:
-  echo Acronis True Image Wrapper
-  echo:
-  echo USAGE: %~nx0 [-l^|-n]   l: list logs
-  echo                              n: no 'after' usercmd
-  echo:
-  echo Run without arguments as Admin to start backup.
-  echo See inside script for config and details.
-  GOTO :EOF
-)
+SET "CDATE=%DATE:~-4%-%DATE:~-7,2%-%DATE:~-10,2% %TIME:~0,2%:%TIME:~3,2%:%TIME:~6,2%"
 
 IF "%1"=="/?" ( CALL :func_help & GOTO :EOF )
 SET /A PARAM=0
@@ -110,24 +89,27 @@ IF NOT EXIST %BKP_PATH% (
       SET "BKP_PATH=%%l:\%BKP_DIR%"
       echo %CDATE% Backup path found at "%%l:\%BKP_DIR%", seems drive letter was changed
     )
-  ) ELSE (
-    echo %CDATE% Not deleting any backups, there's enough free disk space
   )
 )
 
-FOR /F "delims=" %%i IN ('DIR /B /OD %TI_DATA%\Scripts') DO (
-  SET "script=%%i"
-)
+REM :: Del oldest image, if needed
+CALL :func_delOldest
+
+REM :: Show script info
+CALL :func_getScript
 echo %CDATE% Using script: "!script!"
+CALL :func_getBkpName
+echo %CDATE% Backup name: "!display!"
+
+REM :: Modify script for 'no after' option
 IF %NO_AFTER% EQU 1 (
   echo %CDATE% Removing 'after' user command from "!script!"
-  REM :: SETLOCAL EnableExtensions DisableDelayedExpansion
   del "%TEMP%\recent.tis" 2>nul
   SET "print=1"
   (
     FOR /F "usebackq delims=" %%a in (`type %TI_DATA%\Scripts\!script!`) DO (
       FOR /F "tokens=1,2 delims=/<> " %%b in ("%%a") DO (
-        IF /I "%%~c"=="after" (
+        IF "%%~c"=="after" (
           IF DEFINED print (
             SET "print="
           ) ELSE (
