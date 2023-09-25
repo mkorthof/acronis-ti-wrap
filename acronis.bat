@@ -47,66 +47,68 @@ FOR %%L IN (G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z) DO (
   GOTO :EOF
 )
 
-( echo %~1 | find /I "-l" >nul 2>&1 ) && (
-  FOR /F "delims=" %%i IN ('DIR /B /OD %TI_DATA%\Logs\service_*.log') DO (
-      SET "log=%%i"
-  )
-  echo:
-  IF /I NOT "!log!"=="" (
-    echo !log!
-    echo:
-    TYPE %TI_DATA%\Logs\!log!
+IF "%1"=="/?" ( CALL :func_help & GOTO :EOF )
+SET /A PARAM=0
+FOR %%a in (%*) DO (
+  REM :: Handle Options
+  IF !PARAM! EQU 0 (
+    (( echo %%a | find /I "-h" >nul 2>&1 ) || ( echo %%a | find /I "/h" >nul 2>&1 )) && (
+      CALL :func_help
+      GOTO :EOF
+    )
+    (( echo %%a | find /I "-d" >nul 2>&1 ) || ( echo %%a | find /I "/d" >nul 2>&1 )) && (
+      SET /A PARAM=1
+    )
+    (( echo %%a | find /I "-f" >nul 2>&1 ) || ( echo %%a | find /I "/f" >nul 2>&1 )) && (
+      SET /A PARAM=1
+    )
+    (( echo %%a | find /I "-l" >nul 2>&1 ) || ( echo %%a | find /I "/l" >nul 2>&1 )) && (
+      CALL :func_viewLog
+      GOTO :EOF
+    )
+    (( echo %%a | find /I "-n" >nul 2>&1 ) || ( echo %%a | find /I "/n" >nul 2>&1 )) && (
+      SET /A NO_AFTER=1
+    )
+    (( echo %%a | find /I "-o" >nul 2>&1 ) || ( echo %%a | find /I "/o" >nul 2>&1 )) && (
+      CALL :func_delOldest
+      GOTO :EOF
+    )
+    (( echo %%a | find /I "-s" >nul 2>&1 ) || ( echo %%a | find /I "/s" >nul 2>&1 )) && (
+      CALL :func_showBkp
+      GOTO :EOF
+    )
+  REM :: Handle Parameters
   ) ELSE (
-    echo %CDATE% ERROR: Log not found
+    (( echo !l! | find /I "-d" >nul 2>&1 ) || ( echo !l! | find /I "/d" >nul 2>&1 )) && (
+      SET "BKP_PATH=%%a"
+      FOR %%j in (!BKP_PATH!) DO (
+        SET "LETTER=%%~dj"
+        SET "BKP_DRIVE=!LETTER:~-0,1!"
+        SET "BKP_DIR=%%~nj"
+      )
+    )
+    (( echo !l! | find /I "-f" >nul 2>&1 ) || ( echo !l! | find /I "/f" >nul 2>&1 )) && (
+      SET /A REQ_FREE=%%a
+    )
+    SET /A PARAM=0
   )
-  GOTO :EOF
-)
-
-whoami /groups | find "S-1-16-12288" >nul 2>&1 || (
-  echo Please run this command as Administrator (req to exec TI script^)
-  GOTO :EOF
-)
-
-( echo %~1 | find /I "-n" >nul 2>&1 ) && (
-  SET /A NO_AFTER=1
+  SET "l=%%a"
 )
 
 IF NOT DEFINED REQ_FREE SET /A REQ_FREE=0
-IF NOT DEFINED CUR_FREE SET /A CUR_FREE=0
 
+whoami /groups | find "S-1-16-12288" >nul 2>&1 || (
+  echo Please run this command as Administrator (required to exec TI script^)
+  echo For help run "%~nx0 -h"
+  GOTO :EOF
+)
+
+REM :: Check driveletter change
 IF NOT EXIST %BKP_PATH% (
-    echo %CDATE% ERROR: Could not find backup dir "%BKP_DIR%"
-    GOTO :EOF
-) ELSE (
-  SET i=0
-  FOR /F "tokens=3 USEBACKQ" %%F IN (`DIR /-C /W !BKP_PATH! ^| find " bytes free"`) DO (
-     SET "i=%%F"
-  )
-  echo %CDATE% Backup drive: !i! bytes free
-  IF !i! GTR 0 SET /A CUR_FREE=!i:~0,-6!
-  IF "%CUR_FREE%"=="" SET /A CUR_FREE=0
-  SET "S=     "
-  echo %S% %S% %S%   Required MB Free = %REQ_FREE%
-  echo %S% %S% %S%    Current MB Free = !CUR_FREE!
-  echo:
-  IF NOT DEFINED CUR_FREE (
-    echo %CDATE% ERROR: Unable get free disk space, exiting...
-    GOTO :EOF
-  )
-  IF !CUR_FREE! LSS %REQ_FREE% (
-    FOR /F "delims=" %%i IN ('DIR /B /O-D %BKP_PATH%') DO @(
-      @SET "tib=%%i"
-    )     
-    IF /I NOT "!tib!"=="" (
-      IF EXIST "%BKP_PATH%\!tib!" (
-        echo %CDATE% Deleting oldest TIB and showing result...
-        echo:
-        dir "%BKP_PATH%\!tib!" | find "!tib!"
-        del "%BKP_PATH%\!tib!"
-        echo:
-        dir "%BKP_PATH%" | find " bytes"
-        echo:
-      )
+  FOR %%l IN (F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z) DO (
+    IF EXIST "%%l:\%BKP_DIR%" (
+      SET "BKP_PATH=%%l:\%BKP_DIR%"
+      echo %CDATE% Backup path found at "%%l:\%BKP_DIR%", seems drive letter was changed
     )
   ) ELSE (
     echo %CDATE% Not deleting any backups, there's enough free disk space
