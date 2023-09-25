@@ -143,8 +143,170 @@ IF %NO_AFTER% EQU 1 (
     )
   )
 )
+
+REM :: Run command TI with script
 "%TI_PROG%" /script:"!script:.tib.tis=!" || (
   echo %CDATE% ERROR: Issue while running TrueImage script, exiting...
   GOTO :EOF
 )
 echo %CDATE% Done
+GOTO :EOF
+
+REM :: Functions
+:func_help
+  echo:
+  echo Acronis True Image Wrapper
+  echo:
+  echo USAGE: %~nx0 [-h^|-d^|-f^|-l^|-n^|-s]
+  echo:
+  echo        -h   help
+  echo        -d   backup drive and path
+  echo        -f   free space in MB on drive
+  echo        -l   view last log file
+  echo        -n   do not start 'after' user command
+  echo        -o   remove oldest TIB if needed and exit
+  echo        -s   show backup drive and disk space
+  echo:
+  echo EXAMPLE: %~nx0 -d F:\AcronisBackup -f 500000
+  echo:
+  echo No arguments removes oldest tib and starts TI Backup (needs Admin^).
+  echo See inside script for default config and details.
+  GOTO :EOF
+
+:func_getFree
+  FOR /F "tokens=3 USEBACKQ" %%F IN (`DIR /-C /W !BKP_PATH! ^| find " bytes free"`) DO (
+    SET "bytes=%%F"
+  )
+  GOTO :EOF
+
+:func_getScript
+  FOR /F "delims=" %%i IN ('DIR /B /OD %TI_DATA%\Scripts') DO (
+    SET "script=%%i"
+  )
+  GOTO :EOF
+
+:func_getTib
+  FOR /F "delims=" %%i IN ('DIR /B /O-D %BKP_PATH%') DO @(
+    SET "tib=%%i"
+  )
+  GOTO :EOF
+
+:func_getBkpName
+  FOR /F "usebackq delims=" %%a in (`type %TI_DATA%\Scripts\!script!`) DO (
+    FOR /F "tokens=1,2,3 delims=/<>" %%b in ("%%a") DO (
+      IF "%%~c"=="display" (
+          SET "display=%%d"
+          GOTO :EOF
+      )
+    )
+  )
+  GOTO :EOF
+
+:func_delOldest
+  IF EXIST %BKP_PATH% (
+    CALL :func_getFree
+    echo %CDATE% Backup drive: !bytes! bytes free
+    IF !bytes! GTR 0 SET /A CUR_FREE=!bytes:~0,-6!
+    IF "!CUR_FREE!"=="" SET /A CUR_FREE=0
+    SET "S=     "
+    echo %S% %S% %S%   Required MB Free = %REQ_FREE%
+    echo %S% %S% %S%    Current MB Free = !CUR_FREE!
+    echo:
+    IF NOT DEFINED CUR_FREE (
+      echo %CDATE% ERROR: Unable get free disk space, exiting...
+      GOTO :EOF
+    )
+    IF !CUR_FREE! LSS %REQ_FREE% (
+      CALL :func_getTib
+      IF /I NOT "!tib!"=="" (
+        IF EXIST "%BKP_PATH%\!tib!" (
+          echo %CDATE% Deleting oldest TIB and showing result...
+          echo:
+          dir "%BKP_PATH%\!tib!" | find "!tib!"
+          del "%BKP_PATH%\!tib!"
+          echo:
+          dir "%BKP_PATH%" | find " bytes"
+          echo:
+        )
+      )
+    ) ELSE (
+      echo %CDATE% Not deleting any backups, there's enough free disk space
+      EXIT /B 0
+    )
+  ) ELSE (
+    echo %CDATE% ERROR: Could not find backup dir "%BKP_PATH%"
+    EXIT /B 1
+  )
+  GOTO :EOF
+
+REM :: TODO:
+REM :: del oldest '.tib' using Acronis settings instead of DIR date/time
+REM :: tis script only has last in volume_location uri
+:func_getTibUri
+  FOR /F "usebackq delims=" %%a in (`type %TI_DATA%\Scripts\!script!`) DO (
+    FOR /F "tokens=1,2,3,* delims=/<> """ %%b in ("%%a") DO (
+      IF "%%~c"=="volume_location" (
+        echo "%%~e" | find "uri=""%BKP_PATH%" >nul 2>&1 && (
+          FOR /F "tokens=1,2 delims==""" %%a in ("%%e") DO (
+            FOR /F tokens^=1^,2^ delims^=^" %%a in ("%%~fb") DO (
+              SET "tib=%%~fa"
+            )
+          )
+          GOTO :EOF
+        )
+      )
+    )
+  )
+  GOTO :EOF
+
+:func_showBkp
+  IF EXIST "%BKP_PATH%" (
+    echo Backup to: "%BKP_PATH%"
+    CALL :func_getFree
+    IF !bytes! GTR 0 SET /A CUR_FREE=!bytes:~0,-6!
+    IF "!CUR_FREE!"=="" SET /A CUR_FREE=0
+    echo Drive "%BKP_DRIVE%" has !bytes! bytes free
+    echo   - Required: %REQ_FREE% MB free
+    echo   -  Current: !CUR_FREE! MB free
+    echo:
+    CALL :func_getTib
+    IF NOT "!tib!"=="" (
+      echo Oldest True Image Backup (TIB^) file:
+      IF EXIST "%BKP_PATH%\!tib!" (
+        dir "%BKP_PATH%\!tib!" | find "!tib!"
+      ) ELSE (
+        echo File Not Found
+      )
+    ) ELSE (
+      echo TIB file not found
+    )
+    echo:
+    IF !CUR_FREE! GTR %REQ_FREE% (
+      echo No backups would be deleted, there's enough free disk space
+    )
+  ) ELSE (
+    echo Could not find backup dir "%BKP_PATH%"
+  )
+  echo:
+  CALL :func_getScript
+  CALL :func_getBkpName
+  echo Backup name: "!display!"
+  echo Script: "%TI_DATA%\Scripts\!script!"
+  echo Command: "%TI_PROG%" /script:"!script:.tib.tis=!"
+  echo:
+  GOTO :EOF
+
+:func_viewLog
+  FOR /F "delims=" %%i IN ('DIR /B /OD %TI_DATA%\Logs\service_*.log') DO (
+    SET "log=%%i"
+  )
+  echo:
+  IF NOT "!log!"=="" (
+    echo Log file: !log!
+    echo:
+    TYPE %TI_DATA%\Logs\!log!
+  ) ELSE (
+    echo ERROR: Log not found
+    EXIT /B 1
+  )
+  GOTO :EOF
