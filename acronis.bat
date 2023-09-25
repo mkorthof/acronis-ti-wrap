@@ -1,24 +1,25 @@
 @echo off
 SETLOCAL EnableDelayedExpansion
 
-REM :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+REM :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 REM :: Acronis True Image Wrapper
-REM :: Deletes oldest '.tib' first if needed, then runs most recent '.tis'
-REM :: Run without arguments as Admin to start
-REM ::   use '-l' to view latest log
-REM ::   or '-n' to skip running "after" usercmd
-REM :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+REM :: For use with Single version Backup Scheme
+REM :: Deletes oldest '.tib' first if needed and/or runs most recent '.tis'
+REM :: Run without args and as Admin to start TI Backup, or see '-h' for help
+REM ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-REM :: Set minimal needed free space in MB, so at least '.tib' file size
-REM :: SET /A REQ_FREE=500000
-SET /A REQ_FREE=0
+REM :: DEFAULT CONFIGURATION ::
 
-REM :: Set backup drive letter and directory
+REM :: Set backup drive letter, directory and minimal needed
+REM :: free space in MB, at least '.tib' image file size (see '-s')
 SET "BKP_DRIVE=F"
 SET "BKP_DIR=AcronisBackup"
+SET /A REQ_FREE=500000
 
 REM :: Set to 1 to disable running user_command after backup (or use '-n')
 SET /A NO_AFTER=0
+
+REM :: END OF CONFIG :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 SET "TI_PROG=%CommonProgramFiles(x86)%\Acronis\TrueImageHome\TrueImageHomeNotify.exe"
 SET "TI_DATA=%ALLUSERSPROFILE%\Acronis\TrueImageHome"
