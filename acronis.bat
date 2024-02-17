@@ -51,10 +51,10 @@ FOR %%a in (%*) DO (
     )
     (( echo %%a | find /I "-o" >nul 2>&1 ) || ( echo %%a | find /I "/o" >nul 2>&1 )) && (
       CALL :func_delOldest
-      GOTO :EOF
     )
     (( echo %%a | find /I "-s" >nul 2>&1 ) || ( echo %%a | find /I "/s" >nul 2>&1 )) && (
       CALL :func_showBkp
+      IF ERRORLEVEL 1 ( EXIT /B 1 )
       GOTO :EOF
     )
   REM :: Handle Parameters
@@ -98,6 +98,7 @@ IF NOT EXIST %BKP_PATH% (
 
 REM :: Del oldest image, if needed
 CALL :func_delOldest
+IF ERRORLEVEL 1 ( EXIT /B 1 )
 
 REM :: Show script info
 CALL :func_getScript
@@ -280,6 +281,7 @@ REM :: tis script only has last in volume_location uri
     )
   ) ELSE (
     echo Could not find backup dir "%BKP_PATH%"
+    EXIT /B 1
   )
   echo:
   CALL :func_getScript
