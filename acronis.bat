@@ -84,10 +84,13 @@ whoami /groups | find "S-1-16-12288" >nul 2>&1 || (
 
 REM :: Check driveletter change
 IF NOT EXIST %BKP_PATH% (
-  FOR %%l IN (F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z) DO (
-    IF EXIST "%%l:\%BKP_DIR%" (
-      SET "BKP_PATH=%%l:\%BKP_DIR%"
-      echo %CDATE% Backup path found at "%%l:\%BKP_DIR%", seems drive letter was changed
+  FOR %%l IN (D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z) DO (
+    IF NOT "%BKP_DRIVE%" == "%%l" (
+      IF EXIST "%%l:\%BKP_DIR%" (
+        echo %CDATE% ERROR: Backup path found at "%%l:\%BKP_DIR%", seems drive letter was changed. Exiting...
+        EXIT /B 1
+        GOTO :EOF
+      )
     )
   )
 )
