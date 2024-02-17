@@ -18,6 +18,7 @@ SET /A REQ_FREE=500000
 
 REM :: Set to 1 to disable running user_command after backup (or use '-n')
 SET /A NO_AFTER=0
+SET /A DEBUG=1
 
 REM :: END OF CONFIG :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
@@ -127,6 +128,14 @@ IF %NO_AFTER% EQU 1 (
       )
     )
   )
+)
+
+REM :: Debug
+IF %DEBUG% EQU 1 (
+  echo:
+  echo DEBUG: Showing what would have run and exiting...
+  echo DEBUG: Command "%TI_PROG%" /script:"!script:.tib.tis=!"
+  EXIT /B
 )
 
 REM :: Run command TI with script
