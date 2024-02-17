@@ -156,9 +156,9 @@ REM :: Functions
   echo:
   echo        -h   help
   echo        -d   backup drive and path
-  echo        -f   free space in MB on drive
+  echo        -f   set required free space on drive ^(in MB)
   echo        -l   view last log file
-  echo        -n   do not start 'after' user command
+  echo        -n   do not start postuser command ^('after')
   echo        -o   remove oldest TIB if needed and exit
   echo        -s   show backup drive and disk space
   echo:
