@@ -18,7 +18,7 @@ SET /A REQ_FREE=500000
 
 REM :: Set to 1 to disable running user_command after backup (or use '-n')
 SET /A NO_AFTER=0
-SET /A DEBUG=1
+SET /A DEBUG=0
 
 REM :: END OF CONFIG :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
